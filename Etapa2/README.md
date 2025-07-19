@@ -1,5 +1,5 @@
 
-# Segunda Etapa: Transmissão Confiável com RDT 3.0 (UDP)
+# Segunda Etapa: Transmissão Confiável com RDT 3.0 (implementada sobre UDP)
 
 ## 📄 Descrição do Projeto
 
