@@ -19,7 +19,7 @@ Obs: A transferência ocorre em pacotes de até 1024 bytes.
 - Luiz Felipe Silva Lustosa
 - Julio Cesar Barbosa da Silva
 - Vinícius de Sousa Rodrigues
-- Manoel Carvalho de lira
+- Manoel lira de Carvalho
 
 --------------------------------------------------------------
 
