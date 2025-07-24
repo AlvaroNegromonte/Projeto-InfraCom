@@ -31,14 +31,14 @@ with open("recebido_" + nomeArquivo, 'wb') as f:
         pacote, _ = server_socket.recvfrom(BUFFER_SIZE + 1)# nao precisaremos do endereco do cliente nesse momento, por isso o "_"
 
         if pacote == b"Acabou": #finaliza envio
-            break 
+            break
 
         if random.random() < LOSS_PROB: #simula perda de pacote com probabilidade LOSS_PROB
             print(f"[SERVIDOR] *** PACOTE PERDIDO seq={pacote[0]} (simulado) ***")
             continue #simplemente ignora o pacote
 
-        #extrai dados do pacote 
-        seq = pacote[0] 
+        #extrai dados do pacote
+        seq = pacote[0]
         dados = pacote[1:]
         print(f"[SERVIDOR] Recebido seq={seq}")
 

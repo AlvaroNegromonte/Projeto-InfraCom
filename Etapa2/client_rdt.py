@@ -26,9 +26,9 @@ clientSocket.sendto(os.path.basename(mensagem).encode(), destino)
 seq = 0 #num inicial de sequencia (alterna entre 0 e 1)
 with open(mensagem, 'rb') as f:
     while True:
-        chunk = f.read(BUFFER_SIZE) #le o arquivo em pedaços de BUFFER_SIZE bytes 
+        chunk = f.read(BUFFER_SIZE) #le o arquivo em pedaços de BUFFER_SIZE bytes
         if not chunk: #fim do arquivo
-            break 
+            break
 
         pacote = bytes([seq]) + chunk #pacote criado com primeiro byte sendo seq
         ack_recebido = False
@@ -42,7 +42,7 @@ with open(mensagem, 'rb') as f:
                 print(f"[CLIENTE] *** PACOTE seq={seq} PERDIDO (simulado) ***")
 
             clientSocket.settimeout(TIMEOUT)
-            
+
             #aguarda o ACK correto por até 0.3s (timeout)
             #reenvia mesmo pacote caso não tenha recebido o ACK no tempo esperado
             try:

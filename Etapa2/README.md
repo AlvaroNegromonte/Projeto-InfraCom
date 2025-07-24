@@ -19,12 +19,12 @@ O sistema é capaz de:
 
 ## 👥 Integrantes do grupo
 
-- Álvaro Cavalcante Negromonte  
-- Felipe Torres de Macedo  
-- Luiz Felipe Silva Lustosa  
-- Julio Cesar Barbosa da Silva  
-- Vinícius de Sousa Rodrigues  
-- Manoel Carvalho de Lira  
+- Álvaro Cavalcante Negromonte
+- Felipe Torres de Macedo
+- Luiz Felipe Silva Lustosa
+- Julio Cesar Barbosa da Silva
+- Vinícius de Sousa Rodrigues
+- Manoel lira de Carvalho
 
 ---
 
