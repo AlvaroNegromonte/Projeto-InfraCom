@@ -24,6 +24,8 @@ class ChatServer:
         self.ban_votes = {}
         self.banned = set()      # conjunto de endereços banidos
         self.lock = threading.Lock()
+        self.friend_lists = {}   # nome -> set()
+
 
     def _broadcast(self, payload: bytes):
         """Envia para todos os clientes logados."""
@@ -123,6 +125,88 @@ class ChatServer:
         form = self._format_msg(addr, username, text)
         self._broadcast(form.encode())
 
+    def _handle_add_friend(self, addr, text):
+        parts = text.strip().split(" ", 1)
+        if len(parts) != 2:
+            self.rdt.sendto(b"Formato: addtomylist <nome>", addr)
+            return
+
+        requester = self.addr_to_user.get(addr)
+        target_name = parts[1].strip()
+
+        with self.lock:
+            if target_name not in self.clients:
+                self.rdt.sendto(b"Usuario nao encontrado.", addr)
+                return
+            target_addr = self.clients[target_name]
+
+        # Envia solicitação para o target
+        msg = f"[SERVIDOR] {requester} deseja te adicionar como amigo. Responda com: aceitar {requester} ou rejeitar {requester}"
+        self.rdt.sendto(msg.encode(), target_addr)
+
+        self.rdt.sendto(f"[SERVIDOR] Solicitação de amizade enviada para {target_name}.".encode(), addr)
+
+    def _handle_accept_friend(self, addr, text):
+        parts = text.strip().split(" ", 1)
+        if len(parts) != 2:
+            return
+        accepter = self.addr_to_user.get(addr)
+        requester = parts[1].strip()
+
+        with self.lock:
+            if requester not in self.clients:
+                self.rdt.sendto(b"[SERVIDOR] Usuario nao encontrado.", addr)
+                return
+            req_addr = self.clients[requester]
+
+            self.friend_lists.setdefault(accepter, set()).add(requester)
+            self.friend_lists.setdefault(requester, set()).add(accepter)
+
+        self.rdt.sendto(f"[SERVIDOR] Voce agora é amigo de {requester}.".encode(), addr)
+        self.rdt.sendto(f"[SERVIDOR] {accepter} aceitou seu pedido de amizade.".encode(), req_addr)
+
+    def _handle_reject_friend(self, addr, text):
+        parts = text.strip().split(" ", 1)
+        if len(parts) != 2:
+            return
+        rejecter = self.addr_to_user.get(addr)
+        requester = parts[1].strip()
+
+        with self.lock:
+            if requester not in self.clients:
+                return
+            req_addr = self.clients[requester]
+
+        self.rdt.sendto(f"[SERVIDOR] {rejecter} recusou sua solicitação de amizade.".encode(), req_addr)
+        self.rdt.sendto(f"[SERVIDOR] Você rejeitou o pedido de {requester}.".encode(), addr)
+    
+    def _handle_remove_friend(self, addr, text):
+        parts = text.strip().split(" ", 1)
+        if len(parts) != 2:
+            return
+
+        remover = self.addr_to_user.get(addr)
+        target = parts[1].strip()
+
+        with self.lock:
+            if remover not in self.friend_lists:
+                self.friend_lists[remover] = set()
+            if target not in self.friend_lists[remover]:
+                self.rdt.sendto(f"[SERVIDOR] {target} não está na sua lista de amigos.".encode(), addr)
+                return
+
+            # Remove amizade dos dois lados
+            self.friend_lists[remover].discard(target)
+            self.friend_lists.setdefault(target, set()).discard(remover)
+
+            target_addr = self.clients.get(target)
+
+        self.rdt.sendto(f"[SERVIDOR] {target} removido da sua lista de amigos.".encode(), addr)
+
+        if target_addr:
+            self.rdt.sendto(f"[SERVIDOR] {remover} removeu você da lista de amigos.".encode(), target_addr)
+
+
     def serve_forever(self):
         while True:
             data, addr = self.rdt.recvfrom()
@@ -146,6 +230,15 @@ class ChatServer:
                 self._handle_list(addr)
             elif text.startswith("ban "):
                 self._handle_ban(addr, text)
+            elif text.startswith("rmvfrommylist "):
+                self._handle_remove_friend(addr, text)
+            elif text.startswith("addtomylist "):
+                self._handle_add_friend(addr, text)
+            elif text.startswith("aceitar "):
+                self._handle_accept_friend(addr, text)
+            elif text.startswith("rejeitar "):
+                self._handle_reject_friend(addr, text)
+
             else:
                 if username is None:
                     # Cliente não conectado -> ignora (não manda loop infinito)

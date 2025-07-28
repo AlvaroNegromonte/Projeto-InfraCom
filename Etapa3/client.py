@@ -17,6 +17,7 @@ class ChatClient:
                                bufsize=BUFFER_SIZE, debug=False)
         self.running = True
         self.username = None
+
         self.friends = set()
 
         self.listener = threading.Thread(target=self._listen_loop, daemon=True)
@@ -53,8 +54,32 @@ class ChatClient:
                             out = f"[ amigo ] {msg}"
                     except Exception:
                         out = msg
+                # Quando o servidor avisa que agora são amigos:
+                if msg.startswith("[SERVIDOR] Voce agora é amigo de "):
+                    nome = msg.split("de ")[1].strip(".")
+                    self.friends.add(nome)
+
+                # Quando o outro usuário aceita nosso pedido de amizade
+                if msg.startswith("[SERVIDOR] ") and "aceitou seu pedido de amizade" in msg:
+                    nome = msg.split("[SERVIDOR] ")[1].split(" aceitou")[0].strip()
+                    self.friends.add(nome)
+
+                # Quando outro usuário remove você da lista de amigos
+                if msg.startswith("[SERVIDOR] ") and "removeu você da lista de amigos" in msg:
+                    nome = msg.split("[SERVIDOR] ")[1].split(" removeu")[0].strip()
+                    if nome in self.friends:
+                        self.friends.remove(nome)
+                    print(msg)
+
+                # Quando removemos alguém da nossa lista e o servidor confirma
+                if msg.startswith("[SERVIDOR] ") and "removido da sua lista de amigos" in msg:
+                    nome = msg.split("[SERVIDOR] ")[1].split(" removido")[0].strip()
+                    if nome in self.friends:
+                        self.friends.remove(nome)
+                    print(msg)
 
                 print(out)
+
 
             except Exception:
                 # Ignora erros de parsing e continua
@@ -62,6 +87,7 @@ class ChatClient:
 
     def send(self, text: str):
         self.rdt.sendto(text.encode(), self.server_addr)
+
 
     def run(self):
         print("Comandos:")
@@ -92,15 +118,26 @@ class ChatClient:
             if line.startswith("addtomylist "):
                 nome = line.split(" ", 1)[1].strip()
                 if nome:
-                    self.friends.add(nome)
-                    print(f"{nome} adicionado à sua lista de amigos.")
+                    self.send(f"addtomylist {nome}")
                 continue
 
             if line.startswith("rmvfrommylist "):
                 nome = line.split(" ", 1)[1].strip()
-                if nome in self.friends:
-                    self.friends.remove(nome)
-                    print(f"{nome} removido da sua lista de amigos.")
+                if nome:
+                    self.send(f"rmvfrommylist {nome}")
+                continue
+
+
+            if line.startswith("aceitar "):
+                nome = line.split(" ", 1)[1].strip()
+                if nome:
+                    self.send(f"aceitar {nome}")
+                continue
+
+            if line.startswith("rejeitar "):
+                nome = line.split(" ", 1)[1].strip()
+                if nome:
+                    self.send(f"rejeitar {nome}")
                 continue
 
             # Envia ao servidor
