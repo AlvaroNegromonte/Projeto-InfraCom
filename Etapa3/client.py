@@ -27,9 +27,15 @@ class ChatClient:
         while self.running:
             try:
                 data, addr = self.rdt.recvfrom()
-                if data == b"Acabou":
+                if not data or data == b"Acabou":
                     continue
-                msg = data.decode(errors='ignore')
+
+                try:
+                    msg = data.decode(errors='ignore').strip()
+                    if not msg:
+                        continue
+                except Exception:
+                    continue
 
                 # Mensagens diretas do servidor
                 if msg == "OK":
@@ -81,9 +87,8 @@ class ChatClient:
                 print(out)
 
 
-            except Exception:
-                # Ignora erros de parsing e continua
-                pass
+            except Exception as e:
+                print(f"[ERRO NO LISTENER] {e}")
 
     def send(self, text: str):
         self.rdt.sendto(text.encode(), self.server_addr)
@@ -98,52 +103,56 @@ class ChatClient:
         print("mylist | addtomylist <nome> | rmvfrommylist <nome>")
         print("==== Envie qualquer outra linha para o chat público ====")
 
-        while self.running:
-            try:
-                line = input("> ").strip()
-            except EOFError:
-                break
+        try:
+            while self.running:
+                try:
+                    line = input("> ").strip()
+                except EOFError:
+                    break
 
-            if not line:
-                continue
+                if not line:
+                    continue
 
-            # Comandos locais
-            if line == "mylist":
-                if self.friends:
-                    print("Amigos:", ", ".join(sorted(self.friends)))
-                else:
-                    print("Amigos: (vazio)")
-                continue
+                # Comandos locais
+                if line == "mylist":
+                    if self.friends:
+                        print("Amigos:", ", ".join(sorted(self.friends)))
+                    else:
+                        print("Amigos: (vazio)")
+                    continue
 
-            if line.startswith("addtomylist "):
-                nome = line.split(" ", 1)[1].strip()
-                if nome:
-                    self.send(f"addtomylist {nome}")
-                continue
+                if line.startswith("addtomylist "):
+                    nome = line.split(" ", 1)[1].strip()
+                    if nome:
+                        self.send(f"addtomylist {nome}")
+                    continue
 
-            if line.startswith("rmvfrommylist "):
-                nome = line.split(" ", 1)[1].strip()
-                if nome:
-                    self.send(f"rmvfrommylist {nome}")
-                continue
+                if line.startswith("rmvfrommylist "):
+                    nome = line.split(" ", 1)[1].strip()
+                    if nome:
+                        self.send(f"rmvfrommylist {nome}")
+                    continue
 
 
-            if line.startswith("aceitar "):
-                nome = line.split(" ", 1)[1].strip()
-                if nome:
-                    self.send(f"aceitar {nome}")
-                continue
+                if line.startswith("aceitar "):
+                    nome = line.split(" ", 1)[1].strip()
+                    if nome:
+                        self.send(f"aceitar {nome}")
+                    continue
 
-            if line.startswith("rejeitar "):
-                nome = line.split(" ", 1)[1].strip()
-                if nome:
-                    self.send(f"rejeitar {nome}")
-                continue
+                if line.startswith("rejeitar "):
+                    nome = line.split(" ", 1)[1].strip()
+                    if nome:
+                        self.send(f"rejeitar {nome}")
+                    continue
 
-            # Envia ao servidor
-            self.send(line)
+                # Envia ao servidor
+                self.send(line)
 
-        self.sock.close()
+        finally:
+            self.sock.close()
+            print("Cliente encerrado.")
+
 
 
 if __name__ == "__main__":

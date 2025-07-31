@@ -117,8 +117,8 @@ class ChatServer:
                 self.ban_votes.pop(target, None)
                 self.banned.add(taddr)  # marca como banido
 
-            # Mensagem final para o banido (sem RDT, apenas um aviso)
-            self.sock.sendto(b"Voce foi banido.", taddr)
+            # Envia mensagem de ban com confiabilidade (RDT)
+            self.rdt.sendto(b"Voce foi banido.", taddr)
             self._broadcast(f"*** {target} foi banido ***".encode())
 
     def _handle_message(self, addr, username, text):
@@ -211,6 +211,12 @@ class ChatServer:
         while True:
             data, addr = self.rdt.recvfrom()
             if data == b"Acabou":
+                continue
+            if not data or data == b"Acabou":
+                continue
+
+            text = data.decode(errors='ignore').strip()
+            if not text:
                 continue
 
             # Ignora clientes banidos
