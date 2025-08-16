@@ -36,6 +36,17 @@ class ChatClient:
                         continue
                 except Exception:
                     continue
+                
+               # Resposta do servidor para a lista online
+                if msg.startswith("[ONLINE_LIST]"):
+                    lista = msg.split("\n", 1)[1] if "\n" in msg else ""
+                    print("Quem tá no chat:")
+                    if lista.strip():
+                        print(lista)
+                    else:
+                        print("(nenhum)")
+                    print("> ", end="", flush=True)   # reimprime o prompt
+                    continue
 
                 # Mensagens diretas do servidor
                 if msg == "OK":
@@ -102,6 +113,8 @@ class ChatClient:
         print("ban <nome>")
         print("mylist | addtomylist <nome> | rmvfrommylist <nome>")
         print("==== Envie qualquer outra linha para o chat público ====")
+
+        self.send("online_list")
 
         try:
             while self.running:

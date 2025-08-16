@@ -205,7 +205,15 @@ class ChatServer:
 
         if target_addr:
             self.rdt.sendto(f"[SERVIDOR] {remover} removeu você da lista de amigos.".encode(), target_addr)
-
+    
+    def _handle_online_list(self, addr):
+        with self.lock:
+            if not self.clients:
+                lista = ""
+            else:
+                lista = "\n".join([f"{user} {ip}:{port}" for user, (ip, port) in self.clients.items()])
+        payload = "[ONLINE_LIST]\n" + lista
+        self.rdt.sendto(payload.encode(), addr)
 
     def serve_forever(self):
         while True:
@@ -244,6 +252,8 @@ class ChatServer:
                 self._handle_accept_friend(addr, text)
             elif text.startswith("rejeitar "):
                 self._handle_reject_friend(addr, text)
+            elif text == "online_list":
+                self._handle_online_list(addr)
 
             else:
                 if username is None:
