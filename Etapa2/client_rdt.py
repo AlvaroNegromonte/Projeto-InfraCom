@@ -60,14 +60,35 @@ with open(mensagem, 'rb') as f:
 clientSocket.sendto(b"Acabou", destino)
 print("[CLIENTE] Arquivo enviado. Aguardando devolução.")
 
-# Recebe arquivo de volta
+#Logica completa de receptor: verificar seq esperado, enviar ACK, descartar duplicatas.
 mensagem_recebida = "retornado_" + os.path.basename(mensagem)
 with open(mensagem_recebida, 'wb') as f:
+    expected_seq = 0                         
+    server_addr_retorno = None               
     while True:
-        dados, _ = clientSocket.recvfrom(BUFFER_SIZE)
+        dados, addr = clientSocket.recvfrom(BUFFER_SIZE + 1)  # +1 por causa do seq
         if dados == b"Acabou":
+            print("[CLIENTE] Marcador de fim recebido.")
             break
-        f.write(dados)
+
+        if server_addr_retorno is None:      
+            server_addr_retorno = addr
+
+        # Para manter o teste simples, não simulamos perda aqui.
+
+        seq_rx = dados[0]                    
+        payload = dados[1:]                  
+        print(f"[CLIENTE] (retorno) Recebido seq={seq_rx}")
+
+        if seq_rx == expected_seq:           
+            f.write(payload)
+            print(f"[CLIENTE] (retorno) Dados salvos. Enviando ACK {seq_rx}")
+            clientSocket.sendto(bytes([seq_rx]), server_addr_retorno)
+            expected_seq = 1 - expected_seq
+        else:
+            # Duplicata ou fora de ordem: reenvia último ACK valido
+            print(f"[CLIENTE] (retorno) Duplicado/fora de ordem. Reenviando ACK {1 - expected_seq}")
+            clientSocket.sendto(bytes([1 - expected_seq]), server_addr_retorno)
 
 print(f"[CLIENTE] Arquivo retornado como: {mensagem_recebida}")
 clientSocket.close()

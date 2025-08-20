@@ -1,10 +1,13 @@
 from socket import *
 import random
+import time  # [RDT3.0 CHANGE]
 
 BUFFER_SIZE = 1024 #tamanho dos segmentos
 SERVER_NAME = "localhost" #nome do server criado
 SERVER_PORT = 5001 #porta que o servidor está associado
 LOSS_PROB = 0.1 #probabilidade simulada de perdas
+
+TIMEOUT = 0.5  # [RDT3.0 CHANGE] timeout para retransmissão ao devolver o arquivo
 
 #Criação do socket UDP, associacao a porta 5001 e print para indicar server 'ready'
 server_socket = socket(AF_INET, SOCK_DGRAM)
@@ -52,14 +55,40 @@ with open("recebido_" + nomeArquivo, 'wb') as f:
             print(f"[SERVIDOR] Duplicado! Reenviando ACK {1 - expected_seq}")
             server_socket.sendto(bytes([1 - expected_seq]), client_addr)
 
-# Envia de volta o arquivo recebido ao cliente
+
+# [RDT3.0 CHANGE]: a logica abaixo foi adicionada: uso de seq, espera por ACK, timeout e retransmissao.
 with open("recebido_" + nomeArquivo, 'rb') as f:
+    seq = 0  #inicia sequência para envio servidor->cliente
     while True:
         chunk = f.read(BUFFER_SIZE)
         if not chunk:
             break
-        server_socket.sendto(chunk, client_addr)
+
+        pacote = bytes([seq]) + chunk  
+        ack_ok = False                 
+
+        while not ack_ok:              
+           
+            # Mantive sem simulação aqui; o canal UDP pode perder de qualquer forma.
+            server_socket.sendto(pacote, client_addr)
+            print(f"[SERVIDOR] (retorno) Enviado seq={seq}")
+
+            server_socket.settimeout(TIMEOUT)
+            try:
+                ack, _ = server_socket.recvfrom(1)
+                if ack and ack[0] == seq:
+                    print(f"[SERVIDOR] (retorno) Recebido ACK {ack[0]}")
+                    ack_ok = True
+                    seq = 1 - seq
+                else:
+                    print(f"[SERVIDOR] (retorno) ACK incorreto: {ack[0] if ack else 'None'}; esperado {seq}. Reenviando.")
+            except timeout:
+                print(f"[SERVIDOR] (retorno) Timeout aguardando ACK {seq}. Reenviando...")
+
+# Finalização mais robusta: enviar "Acabou" algumas vezes para mitigar perda do marcador de fim
+for _ in range(3):
     server_socket.sendto(b"Acabou", client_addr)
+    time.sleep(0.05)
 
 print("[SERVIDOR] Arquivo devolvido ao cliente.")
 server_socket.close()
